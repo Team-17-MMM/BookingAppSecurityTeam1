@@ -12,6 +12,10 @@ import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 
 
@@ -104,4 +108,52 @@ public class KeyStoreReader {
         }
         return null;
     }
+
+    public List<Certificate> getAllCertificates(String keyStoreFile, String keyStorePass) {
+        List<Certificate> certificates = new ArrayList<>();
+        try {
+            KeyStore ks = KeyStore.getInstance("JKS", "SUN");
+            BufferedInputStream in = new BufferedInputStream(new FileInputStream(keyStoreFile));
+            ks.load(in, keyStorePass.toCharArray());
+
+            Enumeration<String> aliases = ks.aliases();
+            while (aliases.hasMoreElements()) {
+                String alias = aliases.nextElement();
+                Certificate cert = ks.getCertificate(alias);
+                certificates.add(cert);
+            }
+        } catch (KeyStoreException | NoSuchProviderException | NoSuchAlgorithmException | CertificateException |
+                 IOException e) {
+            e.printStackTrace();
+        }
+        return certificates;
+    }
+
+    public List<Certificate> getAllIntermediateCertificates(String keyStoreFile, String keyStorePass) {
+        List<Certificate> certificates = new ArrayList<>();
+        try {
+            KeyStore ks = KeyStore.getInstance("JKS");
+            try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(keyStoreFile))) {
+                ks.load(in, keyStorePass.toCharArray());
+            }
+
+            Enumeration<String> aliases = ks.aliases();
+            while (aliases.hasMoreElements()) {
+                String alias = aliases.nextElement();
+                Certificate cert = ks.getCertificate(alias);
+                if (cert instanceof X509Certificate x509Cert && isIntermediateCertificate(x509Cert)) {
+                    certificates.add(cert);
+                }
+            }
+        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException e) {
+            System.out.println(e.getMessage());
+            e.printStackTrace();
+        }
+        return certificates;
+    }
+
+    private boolean isIntermediateCertificate(X509Certificate cert) {
+        return cert.getBasicConstraints() != -1;
+    }
+
 }

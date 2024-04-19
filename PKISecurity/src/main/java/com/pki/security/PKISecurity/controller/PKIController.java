@@ -2,12 +2,22 @@ package com.pki.security.PKISecurity.controller;
 
 import com.pki.security.PKISecurity.domain.Certificate;
 import com.pki.security.PKISecurity.domain.CertificateRequest;
+import com.pki.security.PKISecurity.dto.CertificateTableDTO;
+import com.pki.security.PKISecurity.dto.KeyPairDTO;
+import com.pki.security.PKISecurity.dto.UserCertificateDTO;
+import com.pki.security.PKISecurity.dto.UserDTO;
 import com.pki.security.PKISecurity.service.IPKIService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.awt.image.Kernel;
+import java.security.KeyPair;
+import java.security.cert.X509Certificate;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/pki")
@@ -26,13 +36,14 @@ public class PKIController {
         }
     }
 
-    @GetMapping(value = {"/createCertificate/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<Certificate> createCertificate(@PathVariable("id") String id){
+    @PostMapping(value = {"/createCertificate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<Boolean> createCertificate(@RequestBody Map<String, UserCertificateDTO> certificateData){
         try {
-            Certificate certificate = pkiService.createCertificate(id);
-            return ResponseEntity.ok(certificate);
+            X509Certificate certificate = pkiService.createCertificate(certificateData);
+            return ResponseEntity.ok(certificate != null);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            System.out.println(e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
         }
     }
 
@@ -41,6 +52,24 @@ public class PKIController {
         try {
             Certificate certificate = pkiService.getCertificate(id);
             return ResponseEntity.ok(certificate);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    @GetMapping(value = {"/getCertificate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<List<CertificateTableDTO>> getAllCertificates(){
+        try {
+            return ResponseEntity.ok(pkiService.getAllCertificates());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    @GetMapping(value = {"/getIntermediateCertificate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<List<CertificateTableDTO>> getAllIntermediateCertificates(){
+        try {
+            return ResponseEntity.ok(pkiService.getAllIntermediateCertificates());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
@@ -83,6 +112,16 @@ public class PKIController {
             return ResponseEntity.ok(certificate);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
+        }
+    }
+
+    @GetMapping(value = {"/generateKeyPair"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<KeyPairDTO> generateKeyPair(){
+        try {
+            KeyPair keyPair = pkiService.generateKeyPair();
+            return ResponseEntity.ok(new KeyPairDTO(keyPair.getPublic(), keyPair.getPrivate()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 }
