@@ -15,7 +15,7 @@ import java.security.PublicKey;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Issuer {
-    private PrivateKey privateKey;
+    private PrivateKey privateKey; // maybe this should be removed
     private PublicKey publicKey;
     private X500Name x500Name;
 }

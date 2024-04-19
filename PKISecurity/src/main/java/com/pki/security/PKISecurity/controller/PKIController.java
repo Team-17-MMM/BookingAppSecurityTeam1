@@ -3,6 +3,8 @@ package com.pki.security.PKISecurity.controller;
 import com.pki.security.PKISecurity.domain.Certificate;
 import com.pki.security.PKISecurity.domain.CertificateRequest;
 import com.pki.security.PKISecurity.dto.KeyPairDTO;
+import com.pki.security.PKISecurity.dto.UserCertificateDTO;
+import com.pki.security.PKISecurity.dto.UserDTO;
 import com.pki.security.PKISecurity.service.IPKIService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -12,6 +14,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.awt.image.Kernel;
 import java.security.KeyPair;
+import java.security.cert.X509Certificate;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/pki")
@@ -30,13 +34,13 @@ public class PKIController {
         }
     }
 
-    @GetMapping(value = {"/createCertificate/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<Certificate> createCertificate(@PathVariable("id") String id){
+    @PostMapping(value = {"/createCertificate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<Boolean> createCertificate(@RequestBody Map<String, UserCertificateDTO> certificateData){
         try {
-            Certificate certificate = pkiService.createCertificate(id);
-            return ResponseEntity.ok(certificate);
+            X509Certificate certificate = pkiService.createCertificate(certificateData);
+            return ResponseEntity.ok(certificate != null);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
         }
     }
 
