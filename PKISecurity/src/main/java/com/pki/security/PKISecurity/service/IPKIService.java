@@ -3,6 +3,8 @@ package com.pki.security.PKISecurity.service;
 import com.pki.security.PKISecurity.domain.Certificate;
 import com.pki.security.PKISecurity.domain.CertificateRequest;
 
+import java.security.KeyPair;
+
 public interface IPKIService {
 
     CertificateRequest issueCertificate(CertificateRequest certificateRequest);
@@ -18,4 +20,6 @@ public interface IPKIService {
     Boolean isCertificateValid(String id);
 
     Boolean deleteCertificateRequest(String id);
+
+    KeyPair generateKeyPair();
 }

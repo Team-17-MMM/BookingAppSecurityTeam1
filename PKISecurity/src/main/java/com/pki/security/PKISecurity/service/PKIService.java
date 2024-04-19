@@ -119,7 +119,8 @@ public class PKIService implements IPKIService {
         return new Issuer(kp.getPrivate(), kp.getPublic(), builder.build());
     }
 
-    private KeyPair generateKeyPair() {
+    @Override
+    public KeyPair generateKeyPair() {
         try {
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
             SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");

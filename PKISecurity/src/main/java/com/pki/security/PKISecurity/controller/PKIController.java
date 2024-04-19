@@ -2,12 +2,16 @@ package com.pki.security.PKISecurity.controller;
 
 import com.pki.security.PKISecurity.domain.Certificate;
 import com.pki.security.PKISecurity.domain.CertificateRequest;
+import com.pki.security.PKISecurity.dto.KeyPairDTO;
 import com.pki.security.PKISecurity.service.IPKIService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.awt.image.Kernel;
+import java.security.KeyPair;
 
 @RestController
 @RequestMapping("/pki")
@@ -83,6 +87,16 @@ public class PKIController {
             return ResponseEntity.ok(certificate);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
+        }
+    }
+
+    @GetMapping(value = {"/generateKeyPair"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<KeyPairDTO> generateKeyPair(){
+        try {
+            KeyPair keyPair = pkiService.generateKeyPair();
+            return ResponseEntity.ok(new KeyPairDTO(keyPair.getPublic(), keyPair.getPrivate()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 }
