@@ -13,5 +13,5 @@ import java.util.List;
 public class CertificateRequest {
     private String subject;
     private PublicKey publicKey;
-    private List<Extension> extensions;
+//    private List<Extension> extensions;
 }

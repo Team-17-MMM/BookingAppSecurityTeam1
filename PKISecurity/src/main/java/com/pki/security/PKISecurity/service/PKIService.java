@@ -1,7 +1,7 @@
 package com.pki.security.PKISecurity.service;
 
 import com.pki.security.PKISecurity.domain.*;
-import com.pki.security.PKISecurity.domain.Certificate;
+import com.pki.security.PKISecurity.dto.CertificateTableDTO;
 import com.pki.security.PKISecurity.dto.UserCertificateDTO;
 import com.pki.security.PKISecurity.manager.StoreManager;
 import org.bouncycastle.cert.X509CertificateHolder;
@@ -15,16 +15,20 @@ import org.springframework.stereotype.Service;
 import org.bouncycastle.asn1.x500.X500Name;
 
 
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
 import java.math.BigInteger;
 import java.security.*;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class PKIService implements IPKIService {
@@ -79,13 +83,14 @@ public class PKIService implements IPKIService {
         Date endDate = Date.from(Instant.now().plus(365, ChronoUnit.DAYS));
         BigInteger serialNumber = BigInteger.valueOf(System.currentTimeMillis());
 
+
         X509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(
                 issuerName,
                 serialNumber,
                 startDate,
                 endDate,
                 subjectName,
-                userCertificateDTO.get("subject").getPublicKey()
+                getPublicKeyFromBase64(userCertificateDTO.get("subject").getPublicKeyBase64())
         );
 
 //        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(true));
@@ -101,6 +106,7 @@ public class PKIService implements IPKIService {
             certConverter = certConverter.setProvider("BC");
             storeManager.getKeyStoreWriter().loadKeyStore("src/main/resources/static/keystore.jks", "password".toCharArray());
             storeManager.getKeyStoreWriter().write("cert1", keyPair.getPrivate(), "password".toCharArray(), certConverter.getCertificate(certHolder));
+            storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/keystore.jks", "password".toCharArray());
             return certConverter.getCertificate(certHolder);
 
         } catch (OperatorCreationException | CertificateException e) {
@@ -108,7 +114,31 @@ public class PKIService implements IPKIService {
         }
     }
 
+    private PublicKey getPublicKeyFromBase64(String publicKeyBase64) {
+        try {
+            byte[] publicKeyBytes = Base64.getDecoder().decode(publicKeyBase64);
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicKeyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            return keyFactory.generatePublic(keySpec);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid Base64 encoded string", e);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Algorithm not supported", e);
+        } catch (InvalidKeySpecException e) {
+            throw new IllegalArgumentException("Invalid key specification", e);
+        }
+    }
+
+
     private X500Name generateName(UserCertificateDTO name) {
+        System.out.println(name.getFullName());
+        System.out.println(name.getLastname());
+        System.out.println(name.getName());
+        System.out.println(name.getOrganization());
+        System.out.println(name.getOrganizationalUnit());
+        System.out.println(name.getCountry());
+        System.out.println(name.getEmail());
+        System.out.println(name.getUserId());
         return new X500Name(
                 "CN=" + name.getFullName() +
                 ", SURNAME=" + name.getLastname() +
@@ -121,10 +151,27 @@ public class PKIService implements IPKIService {
         );
     }
 
+    @Override
+    public List<CertificateTableDTO> getAllCertificates() {
+        List<CertificateTableDTO> certificateTableDTOs = new ArrayList<>();
+        for (Certificate certificate : storeManager.getKeyStoreReader().getAllCertificates("src/main/resources/static/keystore.jks", "password")) {
+            certificateTableDTOs.add(new CertificateTableDTO(certificate));
+        }
+        return certificateTableDTOs;
+    }
 
     @Override
-    public Certificate getCertificate(String id) {
+    public com.pki.security.PKISecurity.domain.Certificate getCertificate(String id) {
         return null;
+    }
+
+    @Override
+    public List<CertificateTableDTO> getAllIntermediateCertificates() {
+        List<CertificateTableDTO> certificateTableDTOs = new ArrayList<>();
+        for (Certificate certificate : storeManager.getKeyStoreReader().getAllIntermediateCertificates("src/main/resources/static/keystore.jks", "password")) {
+            certificateTableDTOs.add(new CertificateTableDTO(certificate));
+        }
+        return certificateTableDTOs;
     }
 
     @Override
@@ -197,4 +244,5 @@ public class PKIService implements IPKIService {
         }
         return null;
     }
+
 }

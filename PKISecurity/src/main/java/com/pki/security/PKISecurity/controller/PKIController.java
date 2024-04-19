@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.awt.image.Kernel;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -41,6 +42,7 @@ public class PKIController {
             X509Certificate certificate = pkiService.createCertificate(certificateData);
             return ResponseEntity.ok(certificate != null);
         } catch (Exception e) {
+            System.out.println(e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
         }
     }
@@ -56,24 +58,18 @@ public class PKIController {
     }
 
     @GetMapping(value = {"/getCertificate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<CertificateTableDTO> getAllCertificates(){
+    public ResponseEntity<List<CertificateTableDTO>> getAllCertificates(){
         try {
-            //TODO: service da vraca listu svih sertifikata i da se prebaci iz tipa Certificate u CertificateTableDTO
-            return (ResponseEntity<CertificateTableDTO>) ResponseEntity.ok();
-            //ovo je sad neki pseudo kod
-//            List<Certificate> certificates = pkiService.getCertificates();
-//            List<CertificateTableDTO> certificateDTOs = convertToDTO(certificates)
-//            return ResponseEntity.ok(certificateDTOs);
+            return ResponseEntity.ok(pkiService.getAllCertificates());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 
     @GetMapping(value = {"/getIntermediateCertificate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<CertificateTableDTO> getAllIntermediateCertificates(){
+    public ResponseEntity<List<CertificateTableDTO>> getAllIntermediateCertificates(){
         try {
-            //TODO: service da vraca listu svih sertifikata koji mogu da potpisuju i da se prebaci iz tipa Certificate u CertificateTableDTO
-            return (ResponseEntity<CertificateTableDTO>) ResponseEntity.ok();
+            return ResponseEntity.ok(pkiService.getAllIntermediateCertificates());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }

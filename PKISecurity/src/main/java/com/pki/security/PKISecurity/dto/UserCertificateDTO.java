@@ -19,7 +19,7 @@ public class UserCertificateDTO {
     private String organizationalUnit;
     private String country;
     private String email;
-    private PublicKey publicKey;
+    private String publicKeyBase64; // Base64 encoded string representation of the public key
 
     public UserCertificateDTO(UserDTO user) {
         this.userId = user.getUserID().toString();
@@ -30,6 +30,6 @@ public class UserCertificateDTO {
         this.organizationalUnit = "IT";
         this.country = "RS";
         this.email = user.getUsername();
-        this.publicKey = null;
+        this.publicKeyBase64 = null;
     }
 }
