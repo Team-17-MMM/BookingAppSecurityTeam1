@@ -2,6 +2,7 @@ package com.pki.security.PKISecurity.controller;
 
 import com.pki.security.PKISecurity.domain.Certificate;
 import com.pki.security.PKISecurity.domain.CertificateRequest;
+import com.pki.security.PKISecurity.dto.CertificateTableDTO;
 import com.pki.security.PKISecurity.dto.KeyPairDTO;
 import com.pki.security.PKISecurity.dto.UserCertificateDTO;
 import com.pki.security.PKISecurity.dto.UserDTO;
@@ -49,6 +50,30 @@ public class PKIController {
         try {
             Certificate certificate = pkiService.getCertificate(id);
             return ResponseEntity.ok(certificate);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    @GetMapping(value = {"/getCertificate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<CertificateTableDTO> getAllCertificates(){
+        try {
+            //TODO: service da vraca listu svih sertifikata i da se prebaci iz tipa Certificate u CertificateTableDTO
+            return (ResponseEntity<CertificateTableDTO>) ResponseEntity.ok();
+            //ovo je sad neki pseudo kod
+//            List<Certificate> certificates = pkiService.getCertificates();
+//            List<CertificateTableDTO> certificateDTOs = convertToDTO(certificates)
+//            return ResponseEntity.ok(certificateDTOs);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    @GetMapping(value = {"/getIntermediateCertificate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<CertificateTableDTO> getAllIntermediateCertificates(){
+        try {
+            //TODO: service da vraca listu svih sertifikata koji mogu da potpisuju i da se prebaci iz tipa Certificate u CertificateTableDTO
+            return (ResponseEntity<CertificateTableDTO>) ResponseEntity.ok();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
