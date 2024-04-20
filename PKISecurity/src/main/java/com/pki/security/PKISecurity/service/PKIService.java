@@ -4,6 +4,8 @@ import com.pki.security.PKISecurity.domain.*;
 import com.pki.security.PKISecurity.dto.CertificateTableDTO;
 import com.pki.security.PKISecurity.dto.UserCertificateDTO;
 import com.pki.security.PKISecurity.manager.StoreManager;
+import org.bouncycastle.asn1.x509.BasicConstraints;
+import org.bouncycastle.cert.CertIOException;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -92,8 +94,11 @@ public class PKIService implements IPKIService {
                 subjectName,
                 getPublicKeyFromBase64(userCertificateDTO.get("subject").getPublicKeyBase64())
         );
-
-//        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(true));
+        try{
+            certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(true));
+        }catch (CertIOException e){
+            System.out.println("mudo");
+        }
 //        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.keyUsage, true, new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
 //        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.extendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
 
