@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.ByteArrayInputStream;
+import java.math.BigInteger;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.Extension;
@@ -26,6 +27,7 @@ public class CertificateTableDTO {
     private Date startDate;
     private Date endDate;
     private List<String> extensions;
+    private BigInteger serialNumber;
 
     public CertificateTableDTO(Certificate certificate) {
         try {
@@ -38,6 +40,7 @@ public class CertificateTableDTO {
             this.startDate = x509Certificate.getNotBefore();
             this.endDate = x509Certificate.getNotAfter();
             this.extensions = extractExtensions(x509Certificate);
+            this.serialNumber = x509Certificate.getSerialNumber();
         } catch (Exception e) {
             System.out.println(e.getMessage());
             e.printStackTrace();
