@@ -54,20 +54,15 @@ public class CertificateTableDTO {
             // Check critical extensions
             if (criticalExtensions != null) {
                 for (String oid : criticalExtensions) {
-                    ExtensionType extensionType = getExtensionType(oid);
-                    if (extensionType != null) {
-                        extractedExtensions.add(extensionType.toString());
-                    }
+                    extractedExtensions.add(oid);
                 }
             }
 
             // Check non-critical extensions
             if (nonCriticalExtensions != null) {
                 for (String oid : nonCriticalExtensions) {
-                    ExtensionType extensionType = getExtensionType(oid);
-                    if (extensionType != null) {
-                        extractedExtensions.add(extensionType.toString());
-                    }
+
+                    extractedExtensions.add(oid);
                 }
             }
         } catch (Exception e) {
