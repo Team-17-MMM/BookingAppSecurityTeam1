@@ -25,7 +25,7 @@ public class CertificateTableDTO {
     private String SubjectName;
     private Date startDate;
     private Date endDate;
-    private List<ExtensionType> extensions;
+    private List<String> extensions;
 
     public CertificateTableDTO(Certificate certificate) {
         try {
@@ -44,8 +44,8 @@ public class CertificateTableDTO {
         }
     }
 
-    private List<ExtensionType> extractExtensions(X509Certificate x509Certificate) {
-        List<ExtensionType> extractedExtensions = new ArrayList<>();
+    private List<String> extractExtensions(X509Certificate x509Certificate) {
+        List<String> extractedExtensions = new ArrayList<>();
         try {
             // Get critical and non-critical extension OIDs
             Set<String> criticalExtensions = x509Certificate.getCriticalExtensionOIDs();
@@ -56,7 +56,7 @@ public class CertificateTableDTO {
                 for (String oid : criticalExtensions) {
                     ExtensionType extensionType = getExtensionType(oid);
                     if (extensionType != null) {
-                        extractedExtensions.add(extensionType);
+                        extractedExtensions.add(extensionType.toString());
                     }
                 }
             }
@@ -66,7 +66,7 @@ public class CertificateTableDTO {
                 for (String oid : nonCriticalExtensions) {
                     ExtensionType extensionType = getExtensionType(oid);
                     if (extensionType != null) {
-                        extractedExtensions.add(extensionType);
+                        extractedExtensions.add(extensionType.toString());
                     }
                 }
             }

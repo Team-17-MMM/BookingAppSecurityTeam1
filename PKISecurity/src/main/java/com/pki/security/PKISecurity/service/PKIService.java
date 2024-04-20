@@ -4,6 +4,11 @@ import com.pki.security.PKISecurity.domain.*;
 import com.pki.security.PKISecurity.dto.CertificateTableDTO;
 import com.pki.security.PKISecurity.dto.UserCertificateDTO;
 import com.pki.security.PKISecurity.manager.StoreManager;
+import org.bouncycastle.asn1.x500.style.BCStyle;
+import org.bouncycastle.asn1.x509.BasicConstraints;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.KeyUsage;
+import org.bouncycastle.asn1.x509.SubjectKeyIdentifier;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -93,6 +98,10 @@ public class PKIService implements IPKIService {
                 getPublicKeyFromBase64(userCertificateDTO.get("subject").getPublicKeyBase64())
         );
 
+        List<String> extensions = new ArrayList<>();
+
+        setExtensions(certBuilder, extensions, subjectName, issuerName);
+
 //        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(true));
 //        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.keyUsage, true, new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
 //        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.extendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
@@ -111,6 +120,40 @@ public class PKIService implements IPKIService {
 
         } catch (OperatorCreationException | CertificateException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void setExtensions(X509v3CertificateBuilder certBuilder, List<String> extensions, X500Name subjectName, X500Name issuerName) {
+        for (String extension : extensions) {
+            try {
+                switch (extension) {
+                    case "BASIC_CONSTRAINTS":
+                        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(false));
+                        break;
+                    case "KEY_USAGE":
+                        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.keyUsage, true, new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
+                        break;
+                    case "SUBJECT_KEY_IDENTIFIER":
+                        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.subjectKeyIdentifier, false, new SubjectKeyIdentifier(new byte[20]));
+                        break;
+                    case "SUBJECT_ALTERNATIVE_NAME":
+                        GeneralName[] subjectAltNames = new GeneralName[2];
+                        subjectAltNames[0] = new GeneralName(GeneralName.dNSName, subjectName.getRDNs(BCStyle.CN)[0].getFirst().getValue().toString());
+                        subjectAltNames[1] = new GeneralName(GeneralName.rfc822Name, subjectName.getRDNs(BCStyle.E)[0].getFirst().getValue().toString());
+                        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.subjectAlternativeName, false, new org.bouncycastle.asn1.x509.GeneralNames(subjectAltNames));
+                        break;
+                    case "ISSUER_ALTERNATIVE_NAME":
+                        GeneralName[] issuerAltNames = new GeneralName[2];
+                        issuerAltNames[0] = new GeneralName(GeneralName.dNSName, issuerName.getRDNs(BCStyle.CN)[0].getFirst().getValue().toString());
+                        issuerAltNames[1] = new GeneralName(GeneralName.rfc822Name, issuerName.getRDNs(BCStyle.E)[0].getFirst().getValue().toString());
+                        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.issuerAlternativeName, false, new org.bouncycastle.asn1.x509.GeneralNames(issuerAltNames));
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Invalid extension: " + extension);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Error adding extension: " + extension, e);
+            }
         }
     }
 
