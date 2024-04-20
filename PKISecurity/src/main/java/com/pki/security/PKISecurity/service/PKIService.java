@@ -98,6 +98,7 @@ public class PKIService implements IPKIService {
                 getPublicKeyFromBase64(userCertificateDTO.get("subject").getPublicKeyBase64())
         );
 
+        // TODO: switch to using extensions from the request
         List<String> extensions = new ArrayList<>();
 
         setExtensions(certBuilder, extensions, subjectName, issuerName);
