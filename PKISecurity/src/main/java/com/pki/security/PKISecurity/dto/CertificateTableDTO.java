@@ -64,6 +64,7 @@ public class CertificateTableDTO {
             // Check non-critical extensions
             if (nonCriticalExtensions != null) {
                 for (String oid : nonCriticalExtensions) {
+
                     extractedExtensions.add(oid);
                 }
             }
