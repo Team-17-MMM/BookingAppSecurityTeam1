@@ -4,6 +4,7 @@ import com.pki.security.PKISecurity.domain.*;
 import com.pki.security.PKISecurity.dto.CertificateDataDTO;
 import com.pki.security.PKISecurity.dto.CertificateTableDTO;
 import com.pki.security.PKISecurity.dto.UserCertificateDTO;
+import com.pki.security.PKISecurity.keystores.KeyStoreReader;
 import com.pki.security.PKISecurity.manager.StoreManager;
 import org.bouncycastle.asn1.x500.X500NameBuilder;
 import org.bouncycastle.asn1.x500.style.BCStyle;
@@ -44,6 +45,7 @@ import java.util.*;
 
 @Service
 public class PKIService implements IPKIService {
+    private static final String KEYS_FOLDER_PATH = "C:\\Users\\Milos\\IdeaProjects\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
     private final StoreManager storeManager = new StoreManager();
     @Override
     public CertificateRequest issueCertificate(CertificateRequest certificateRequest) {
@@ -79,7 +81,7 @@ public class PKIService implements IPKIService {
         JcaContentSignerBuilder builder = new JcaContentSignerBuilder("SHA256WithRSAEncryption");
         builder.setProvider("BC");
 
-        String fileName = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\" + userCertificateDTO.getIssuer().getEmail().split("@")[0];
+        String fileName = KEYS_FOLDER_PATH + userCertificateDTO.getIssuer().getEmail().split("@")[0];
         String privateKey = this.readPasswordFromFile(fileName);
         try {
             ContentSigner contentSigner = builder.build(getPrivateKeyFromBase64(privateKey));
@@ -226,7 +228,7 @@ public class PKIService implements IPKIService {
     @Override
     public List<CertificateTableDTO> getAllCertificates() {
         List<CertificateTableDTO> certificateTableDTOs = new ArrayList<>();
-        for (Certificate certificate : storeManager.getKeyStoreReader().getAllCertificates("src/main/resources/static/superadmin.jks", "30S)NZ+R$^Gz")) {
+        for (Certificate certificate : KeyStoreReader.getAllCertificates("src/main/resources/static/", "src/main/resources/passwords/")) {
             certificateTableDTOs.add(new CertificateTableDTO(certificate));
         }
         return certificateTableDTOs;
@@ -318,7 +320,7 @@ public class PKIService implements IPKIService {
                 getPublicKeyFromBase64(certificateDataDTO.getSubject().getPublicKeyBase64())
         );
 
-        String fileName = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\" + certificateDataDTO.getIssuer().getEmail().split("@")[0];
+        String fileName = KEYS_FOLDER_PATH + certificateDataDTO.getIssuer().getEmail().split("@")[0];
         String privateKey = this.readPasswordFromFile(fileName);
         String keystoreFileName = "src/main/resources/static/" + certificateDataDTO.getIssuer().getEmail().split("@")[0] + ".jks";
         String password = this.readPasswordFromFile("src/main/resources/passwords/" + certificateDataDTO.getIssuer().getEmail().split("@")[0]);

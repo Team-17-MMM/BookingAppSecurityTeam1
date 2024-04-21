@@ -4,15 +4,15 @@ import com.pki.security.PKISecurity.domain.Issuer;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Enumeration;
 import java.util.List;
 
@@ -41,9 +41,9 @@ public class KeyStoreReader {
      * Ovi podaci se mogu iskoristiti da se novi sertifikati izdaju.
      *
      * @param keyStoreFile - datoteka odakle se citaju podaci
-     * @param alias - alias putem kog se identifikuje sertifikat izdavaoca
-     * @param password - lozinka koja je neophodna da se otvori key store
-     * @param keyPass - lozinka koja je neophodna da se izvuce privatni kljuc
+     * @param alias        - alias putem kog se identifikuje sertifikat izdavaoca
+     * @param password     - lozinka koja je neophodna da se otvori key store
+     * @param keyPass      - lozinka koja je neophodna da se izvuce privatni kljuc
      * @return - podatke o izdavaocu i odgovarajuci privatni kljuc
      */
     public Issuer readIssuerFromStore(String keyStoreFile, String alias, char[] password, char[] keyPass) {
@@ -60,7 +60,8 @@ public class KeyStoreReader {
 
             X500Name issuerName = new JcaX509CertificateHolder((X509Certificate) cert).getSubject();
             return new Issuer(privateKey, cert.getPublicKey(), issuerName);
-        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | UnrecoverableKeyException | IOException e) {
+        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | UnrecoverableKeyException |
+                 IOException e) {
             e.printStackTrace();
         }
         return null;
@@ -77,11 +78,12 @@ public class KeyStoreReader {
             BufferedInputStream in = new BufferedInputStream(new FileInputStream(keyStoreFile));
             ks.load(in, keyStorePass.toCharArray());
 
-            if(ks.isKeyEntry(alias)) {
+            if (ks.isKeyEntry(alias)) {
                 Certificate cert = ks.getCertificate(alias);
                 return cert;
             }
-        } catch (KeyStoreException | NoSuchProviderException | NoSuchAlgorithmException | CertificateException | IOException e) {
+        } catch (KeyStoreException | NoSuchProviderException | NoSuchAlgorithmException | CertificateException |
+                 IOException e) {
             e.printStackTrace();
         }
         return null;
@@ -98,7 +100,7 @@ public class KeyStoreReader {
             BufferedInputStream in = new BufferedInputStream(new FileInputStream(keyStoreFile));
             ks.load(in, keyStorePass.toCharArray());
 
-            if(ks.isKeyEntry(alias)) {
+            if (ks.isKeyEntry(alias)) {
                 PrivateKey pk = (PrivateKey) ks.getKey(alias, pass.toCharArray());
                 return pk;
             }
@@ -109,51 +111,88 @@ public class KeyStoreReader {
         return null;
     }
 
-    public List<Certificate> getAllCertificates(String keyStoreFile, String keyStorePass) {
+    public static List<Certificate> getAllCertificates(String keyStoreFolder, String passwordsFolder) {
+        List<Certificate> certificates = new ArrayList<>();
+        File folder = new File(keyStoreFolder);
+        File[] files = folder.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isFile()) {
+                    try {
+                        // remove file extension
+                        String fileName = file.getName().substring(0, file.getName().lastIndexOf('.'));
+                        certificates.addAll(getCertificatesFromFile(file.getAbsolutePath(), Files.readString(Paths.get(passwordsFolder + fileName))));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+        return certificates;
+    }
+
+    private static List<Certificate> getCertificatesFromFile(String keyStoreFile, String keyStorePass) {
         List<Certificate> certificates = new ArrayList<>();
         try {
             KeyStore ks = KeyStore.getInstance("JKS", "SUN");
-            BufferedInputStream in = new BufferedInputStream(new FileInputStream(keyStoreFile));
+            FileInputStream in = new FileInputStream(keyStoreFile);
             ks.load(in, keyStorePass.toCharArray());
-
             Enumeration<String> aliases = ks.aliases();
             while (aliases.hasMoreElements()) {
                 String alias = aliases.nextElement();
                 Certificate cert = ks.getCertificate(alias);
                 certificates.add(cert);
             }
-        } catch (KeyStoreException | NoSuchProviderException | NoSuchAlgorithmException | CertificateException |
-                 IOException e) {
+        } catch (KeyStoreException | NoSuchProviderException | NoSuchAlgorithmException |
+                 CertificateException | IOException e) {
             e.printStackTrace();
         }
         return certificates;
     }
 
-    public List<Certificate> getAllIntermediateCertificates(String keyStoreFile, String keyStorePass) {
+    public List<Certificate> getAllIntermediateCertificates(String keyStoreFolder, String passwordsFolder) {
+        List<Certificate> certificates = new ArrayList<>();
+        File folder = new File(keyStoreFolder);
+        File[] files = folder.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isFile()) {
+                    try {
+                        // remove file extension
+                        String fileName = file.getName().substring(0, file.getName().lastIndexOf('.'));
+                        certificates.addAll(getIntermediateCertificatesFromFile(file.getAbsolutePath(), Files.readString(Paths.get(passwordsFolder + fileName))));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+        return certificates;
+    }
+
+    private Collection<? extends Certificate> getIntermediateCertificatesFromFile(String absolutePath, String s) {
         List<Certificate> certificates = new ArrayList<>();
         try {
-            KeyStore ks = KeyStore.getInstance("JKS");
-            try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(keyStoreFile))) {
-                ks.load(in, keyStorePass.toCharArray());
-            }
-
+            KeyStore ks = KeyStore.getInstance("JKS", "SUN");
+            FileInputStream in = new FileInputStream(absolutePath);
+            ks.load(in, s.toCharArray());
             Enumeration<String> aliases = ks.aliases();
             while (aliases.hasMoreElements()) {
                 String alias = aliases.nextElement();
                 Certificate cert = ks.getCertificate(alias);
-                if (cert instanceof X509Certificate x509Cert && isIntermediateCertificate(x509Cert)) {
+                if (isIntermediateCertificate((X509Certificate) cert)) {
                     certificates.add(cert);
                 }
             }
-        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException e) {
-            System.out.println(e.getMessage());
+        } catch (KeyStoreException | NoSuchProviderException | NoSuchAlgorithmException |
+                 CertificateException | IOException e) {
             e.printStackTrace();
         }
         return certificates;
     }
 
+
     private boolean isIntermediateCertificate(X509Certificate cert) {
         return cert.getBasicConstraints() != -1;
     }
-
 }
