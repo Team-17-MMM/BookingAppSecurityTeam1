@@ -1,14 +1,17 @@
 package com.pki.security.PKISecurity.service;
 
 import com.pki.security.PKISecurity.domain.*;
+import com.pki.security.PKISecurity.dto.CertificateDataDTO;
 import com.pki.security.PKISecurity.dto.CertificateTableDTO;
 import com.pki.security.PKISecurity.dto.UserCertificateDTO;
 import com.pki.security.PKISecurity.manager.StoreManager;
+import org.bouncycastle.asn1.x500.X500NameBuilder;
 import org.bouncycastle.asn1.x500.style.BCStyle;
 import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.KeyUsage;
 import org.bouncycastle.asn1.x509.SubjectKeyIdentifier;
+import org.bouncycastle.cert.CertIOException;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -26,9 +29,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.text.ParseException;
@@ -46,45 +51,10 @@ public class PKIService implements IPKIService {
     }
 
     @Override
-    public X509Certificate createCertificate(Map<String, UserCertificateDTO> userCertificateDTO) {
-//        Certificate certificateSave;
-//        try {
-//
-//            X500Name subjectName = generateSubject();
-//
-//
-////            Issuer issuer = generateIssuer();
-////            Subject subject = generateSubject();
-//
-////            //Datumi od kad do kad vazi sertifikat
-////            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-////            Date startDate = sdf.parse("2023-03-25");
-////            Date endDate = sdf.parse("2028-03-25");
-////
-////            X509Certificate certificate = CertificateGenerator.generateCertificate(subject,
-////                    issuer, startDate, endDate, "1");
-////
-////
-////            certificateSave = new Certificate(subject, issuer,
-////                    "1", startDate, endDate, certificate);
-////
-////            System.out.println("Cuvanje certifikata u jks fajl:");
-////            storeManager.getKeyStoreWriter().loadKeyStore("src/main/resources/static/keystore.jks",  "password".toCharArray());
-////            PrivateKey pk = certificateSave.getIssuer().getPrivateKey();
-////            storeManager.getKeyStoreWriter().write("cert1", pk, "password".toCharArray(), certificateSave.getX509Certificate());
-////            storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/keystore.jks",  "password".toCharArray());
-////            System.out.println("Cuvanje certifikata u jks fajl zavrseno.");
-////
-////            System.out.println("Ucitavanje sertifikata iz jks fajla:");
-////            java.security.cert.Certificate loadedCertificate = storeManager.getKeyStoreReader().readCertificate("src/main/resources/static/keystore.jks", "password", "cert1");
-////            System.out.println(loadedCertificate);
-//        } catch (ParseException e) {
-//            e.printStackTrace();
-//        }
-//
+    public X509Certificate createCertificate(CertificateDataDTO userCertificateDTO) {
 
-        X500Name subjectName = generateName(userCertificateDTO.get("subject"));
-        X500Name issuerName = generateName(userCertificateDTO.get("issuer"));
+        X500Name subjectName = generateName(userCertificateDTO.getSubject());
+        X500Name issuerName = generateName(userCertificateDTO.getIssuer());
         KeyPair keyPair = generateKeyPair();
         Date startDate = Date.from(Instant.now());
         Date endDate = Date.from(Instant.now().plus(365, ChronoUnit.DAYS));
@@ -97,44 +67,31 @@ public class PKIService implements IPKIService {
                 startDate,
                 endDate,
                 subjectName,
-                getPublicKeyFromBase64(userCertificateDTO.get("subject").getPublicKeyBase64())
+                getPublicKeyFromBase64(userCertificateDTO.getSubject().getPublicKeyBase64())
         );
 
-        // TODO: switch to using extensions from the request
         List<String> extensions = new ArrayList<>();
+        extensions = userCertificateDTO.getExtensions();
 
         setExtensions(certBuilder, extensions, subjectName, issuerName);
 
-//        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(true));
 
-//        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.keyUsage, true, new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
-//        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.extendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
-        if (extensions.contains("BASIC_CONSTRAINTS")) {
-            this.createKeyStore(userCertificateDTO.get("subject"));
-        }
         JcaContentSignerBuilder builder = new JcaContentSignerBuilder("SHA256WithRSAEncryption");
         builder.setProvider("BC");
-        String fileName = "C:\\Users\\Korisnik\\Desktop\\web_app\\server\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\" + userCertificateDTO.get("issuer").getEmail();
+
+        String fileName = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\" + userCertificateDTO.getIssuer().getEmail().split("@")[0];
         String privateKey = this.readPasswordFromFile(fileName);
         try {
             ContentSigner contentSigner = builder.build(getPrivateKeyFromBase64(privateKey));
             X509CertificateHolder certHolder = certBuilder.build(contentSigner);
             JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
             certConverter = certConverter.setProvider("BC");
-            if (extensions.contains("BASIC_CONSTRAINTS")) {
-                String keystoreFileName = "src/main/resources/static/" + userCertificateDTO.get("subject").getEmail().split("@")[0] + ".jks";
-                String password = this.readPasswordFromFile("src/main/resources/static/" + userCertificateDTO.get("subject").getEmail().split("@")[0]);
-                storeManager.getKeyStoreWriter().loadKeyStore(keystoreFileName, password.toCharArray());
-                storeManager.getKeyStoreWriter().write("cert1", keyPair.getPrivate(), password.toCharArray(), certConverter.getCertificate(certHolder));
-                storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/keystore.jks", password.toCharArray());
-            }
-            else{
-                String keystoreFileName = "src/main/resources/static/" + userCertificateDTO.get("issuer").getEmail().split("@")[0] + ".jks";
-                String password = this.readPasswordFromFile("src/main/resources/static/" + userCertificateDTO.get("issuer").getEmail().split("@")[0]);
-                storeManager.getKeyStoreWriter().loadKeyStore(keystoreFileName, password.toCharArray());
-                storeManager.getKeyStoreWriter().write("cert1", keyPair.getPrivate(), password.toCharArray(), certConverter.getCertificate(certHolder));
-                storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/keystore.jks", password.toCharArray());
-            }
+
+            String keystoreFileName = "src/main/resources/static/" + userCertificateDTO.getIssuer().getEmail().split("@")[0] + ".jks";
+            String password = this.readPasswordFromFile("src/main/resources/passwords/" + userCertificateDTO.getIssuer().getEmail().split("@")[0]);
+            storeManager.getKeyStoreWriter().loadKeyStore(keystoreFileName, password.toCharArray());
+            storeManager.getKeyStoreWriter().write("cert1", getPrivateKeyFromBase64(privateKey), password.toCharArray(), certConverter.getCertificate(certHolder));
+            storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/" + userCertificateDTO.getIssuer().getEmail().split("@")[0] + ".jks", password.toCharArray());
             return certConverter.getCertificate(certHolder);
 
         } catch (OperatorCreationException | CertificateException e) {
@@ -142,10 +99,11 @@ public class PKIService implements IPKIService {
         }
     }
 
+
     private void createKeyStore(UserCertificateDTO userCertificateDTO){
         String keystoreFileName = "src/main/resources/static/" + userCertificateDTO.getEmail().split("@")[0] + ".jks";
         String keystorePassword = this.generateRandomPassword();
-        this.writePasswordToFile("src/main/resources/static/" + userCertificateDTO.getEmail().split("@")[0], keystorePassword);
+        this.writePasswordToFile("src/main/resources/passwords/" + userCertificateDTO.getEmail().split("@")[0], keystorePassword);
         try {
         KeyStore keyStore = KeyStore.getInstance("JKS");
         keyStore.load(null, keystorePassword.toCharArray());
@@ -172,6 +130,13 @@ public class PKIService implements IPKIService {
         }
     }
     private void setExtensions(X509v3CertificateBuilder certBuilder, List<String> extensions, X500Name subjectName, X500Name issuerName) {
+        if(extensions.isEmpty()){
+            try{
+                certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(true));
+            }catch (Exception e) {
+                throw new RuntimeException("Error adding extension", e);
+            }
+        }
         for (String extension : extensions) {
             try {
                 switch (extension) {
@@ -223,9 +188,10 @@ public class PKIService implements IPKIService {
     public static PrivateKey getPrivateKeyFromBase64(String privateKeyBase64) {
         try {
             byte[] privateKeyBytes = Base64.getDecoder().decode(privateKeyBase64);
-            PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-            return keyFactory.generatePrivate(keySpec);
+            KeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+            PrivateKey privateKey = keyFactory.generatePrivate(privateKeySpec);
+            return privateKey;
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid Base64 encoded string", e);
         } catch (NoSuchAlgorithmException e) {
@@ -260,7 +226,7 @@ public class PKIService implements IPKIService {
     @Override
     public List<CertificateTableDTO> getAllCertificates() {
         List<CertificateTableDTO> certificateTableDTOs = new ArrayList<>();
-        for (Certificate certificate : storeManager.getKeyStoreReader().getAllCertificates("src/main/resources/static/keystore.jks", "password")) {
+        for (Certificate certificate : storeManager.getKeyStoreReader().getAllCertificates("src/main/resources/static/superadmin.jks", "30S)NZ+R$^Gz")) {
             certificateTableDTOs.add(new CertificateTableDTO(certificate));
         }
         return certificateTableDTOs;
@@ -300,44 +266,6 @@ public class PKIService implements IPKIService {
         return null;
     }
 
-
-//    public Subject generateSubject(UserCertificateDTO userCertificateDTO) {
-//        KeyPair keyPairSubject = generateKeyPair();
-//
-//        //klasa X500NameBuilder pravi X500Name objekat koji predstavlja podatke o vlasniku
-//        X500NameBuilder builder = new X500NameBuilder(BCStyle.INSTANCE);
-////        builder.addRDN(BCStyle.CN, userDTO.getName() + " " + userDTO.getLastname());
-////        builder.addRDN(BCStyle.SURNAME, userDTO.getLastname());
-////        builder.addRDN(BCStyle.GIVENNAME, userDTO.getName());
-////        builder.addRDN(BCStyle.O, "Team 1");
-////        builder.addRDN(BCStyle.OU, "Bakiji");
-////        builder.addRDN(BCStyle.C, "RS");
-////        builder.addRDN(BCStyle.E, userDTO.getUsername());
-////        //UID (USER ID) je ID korisnika
-////        builder.addRDN(BCStyle.UID, userDTO.getUserID().toString());
-//
-//        return new Subject(keyPairSubject.getPublic(), builder.build());
-//    }
-//
-//    public Issuer generateIssuer() {
-//        KeyPair kp = generateKeyPair();
-//        X500NameBuilder builder = new X500NameBuilder(BCStyle.INSTANCE);
-//        builder.addRDN(BCStyle.CN, "IT sluzba");
-//        builder.addRDN(BCStyle.SURNAME, "sluzba");
-//        builder.addRDN(BCStyle.GIVENNAME, "IT");
-//        builder.addRDN(BCStyle.O, "UNS-FTN");
-//        builder.addRDN(BCStyle.OU, "Katedra za informatiku");
-//        builder.addRDN(BCStyle.C, "RS");
-//        builder.addRDN(BCStyle.E, "itsluzba@uns.ac.rs");
-//        //UID (USER ID) je ID korisnika
-//        builder.addRDN(BCStyle.UID, "654321");
-//
-//        //Kreiraju se podaci za issuer-a, sto u ovom slucaju ukljucuje:
-//        // - privatni kljuc koji ce se koristiti da potpise sertifikat koji se izdaje
-//        // - podatke o vlasniku sertifikata koji izdaje nov sertifikat
-//        return new Issuer(kp.getPrivate(), kp.getPublic(), builder.build());
-//    }
-
     @Override
     public KeyPair generateKeyPair() {
         try {
@@ -370,6 +298,55 @@ public class PKIService implements IPKIService {
             sb.append(chars.charAt(randomIndex));
         }
         return sb.toString();
+    }
+
+    public X509Certificate createRootCertificate(CertificateDataDTO certificateDataDTO) {
+        this.createKeyStore(certificateDataDTO.getSubject());
+
+        X500Name subjectName = generateName(certificateDataDTO.getSubject());
+        X500Name issuerName = generateName(certificateDataDTO.getIssuer());
+        Date startDate = Date.from(Instant.now());
+        Date endDate = Date.from(Instant.now().plus(365, ChronoUnit.DAYS));
+        BigInteger serialNumber = BigInteger.valueOf(System.currentTimeMillis());
+
+        X509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(
+                issuerName,
+                serialNumber,
+                startDate,
+                endDate,
+                subjectName,
+                getPublicKeyFromBase64(certificateDataDTO.getSubject().getPublicKeyBase64())
+        );
+
+        String fileName = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\" + certificateDataDTO.getIssuer().getEmail().split("@")[0];
+        String privateKey = this.readPasswordFromFile(fileName);
+        String keystoreFileName = "src/main/resources/static/" + certificateDataDTO.getIssuer().getEmail().split("@")[0] + ".jks";
+        String password = this.readPasswordFromFile("src/main/resources/passwords/" + certificateDataDTO.getIssuer().getEmail().split("@")[0]);
+
+        JcaContentSignerBuilder builder = new JcaContentSignerBuilder("SHA256WithRSAEncryption");
+        builder.setProvider("BC");
+        try{
+            ContentSigner contentSigner = builder.build(getPrivateKeyFromBase64(privateKey));
+            X509CertificateHolder certHolder = certBuilder.build(contentSigner);
+            JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
+            certConverter = certConverter.setProvider("BC");
+            storeManager.getKeyStoreWriter().loadKeyStore(keystoreFileName, password.toCharArray());
+
+            certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(true));
+            certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.keyUsage, true, new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
+            certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.subjectKeyIdentifier, false, new SubjectKeyIdentifier(new byte[20]));
+
+            storeManager.getKeyStoreWriter().write(certificateDataDTO.getSubject().getEmail(), getPrivateKeyFromBase64(privateKey), password.toCharArray(), certConverter.getCertificate(certHolder));
+            storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/" + certificateDataDTO.getSubject().getEmail().split("@")[0] + ".jks", password.toCharArray());
+            return certConverter.getCertificate(certHolder);
+
+        }catch (OperatorCreationException e) {
+            throw new RuntimeException(e);
+        } catch (CertificateException e) {
+            throw new RuntimeException(e);
+        } catch (CertIOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

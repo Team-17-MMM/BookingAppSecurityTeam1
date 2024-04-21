@@ -2,10 +2,7 @@ package com.pki.security.PKISecurity.controller;
 
 import com.pki.security.PKISecurity.domain.Certificate;
 import com.pki.security.PKISecurity.domain.CertificateRequest;
-import com.pki.security.PKISecurity.dto.CertificateTableDTO;
-import com.pki.security.PKISecurity.dto.KeyPairDTO;
-import com.pki.security.PKISecurity.dto.UserCertificateDTO;
-import com.pki.security.PKISecurity.dto.UserDTO;
+import com.pki.security.PKISecurity.dto.*;
 import com.pki.security.PKISecurity.service.IPKIService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -37,7 +34,7 @@ public class PKIController {
     }
 
     @PostMapping(value = {"/createCertificate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<Boolean> createCertificate(@RequestBody Map<String, UserCertificateDTO> certificateData){
+    public ResponseEntity<Boolean> createCertificate(@RequestBody CertificateDataDTO certificateData){
         try {
             X509Certificate certificate = pkiService.createCertificate(certificateData);
             return ResponseEntity.ok(certificate != null);
@@ -46,6 +43,28 @@ public class PKIController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
         }
     }
+
+    @PostMapping(value = {"/createRootCertificate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<Boolean> createRootCertificate(@RequestBody CertificateDataDTO certificateData){
+        try {
+            X509Certificate certificate = pkiService.createRootCertificate(certificateData);
+            return ResponseEntity.ok(certificate != null);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
+        }
+    }
+
+//    @PostMapping(value = {"/generateRoot"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+//    public ResponseEntity<Boolean> generateRootCertificate(@RequestBody CertificateDataDTO certificateData){
+//        try {
+//            X509Certificate certificate = pkiService.createRootCertificate(certificateData);
+//            return ResponseEntity.ok(certificate != null);
+//        } catch (Exception e) {
+//            System.out.println(e.getMessage());
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
+//        }
+//    }
 
     @GetMapping(value = {"/getCertificate/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<Certificate> getCertificate(@PathVariable("id") String id){
