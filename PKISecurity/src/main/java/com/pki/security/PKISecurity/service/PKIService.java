@@ -20,14 +20,16 @@ import org.springframework.stereotype.Service;
 import org.bouncycastle.asn1.x500.X500Name;
 
 
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
+import java.io.*;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -107,17 +109,32 @@ public class PKIService implements IPKIService {
 
 //        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.keyUsage, true, new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
 //        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.extendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
-
+        if (extensions.contains("BASIC_CONSTRAINTS")) {
+            this.createKeyStore(userCertificateDTO.get("subject"));
+        }
         JcaContentSignerBuilder builder = new JcaContentSignerBuilder("SHA256WithRSAEncryption");
         builder.setProvider("BC");
+        String fileName = "C:\\Users\\Korisnik\\Desktop\\web_app\\server\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\" + userCertificateDTO.get("issuer").getEmail();
+        String privateKey = this.readPasswordFromFile(fileName);
         try {
-            ContentSigner contentSigner = builder.build(keyPair.getPrivate());
+            ContentSigner contentSigner = builder.build(getPrivateKeyFromBase64(privateKey));
             X509CertificateHolder certHolder = certBuilder.build(contentSigner);
             JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
             certConverter = certConverter.setProvider("BC");
-            storeManager.getKeyStoreWriter().loadKeyStore("src/main/resources/static/keystore.jks", "password".toCharArray());
-            storeManager.getKeyStoreWriter().write("cert1", keyPair.getPrivate(), "password".toCharArray(), certConverter.getCertificate(certHolder));
-            storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/keystore.jks", "password".toCharArray());
+            if (extensions.contains("BASIC_CONSTRAINTS")) {
+                String keystoreFileName = "src/main/resources/static/" + userCertificateDTO.get("subject").getEmail().split("@")[0] + ".jks";
+                String password = this.readPasswordFromFile("src/main/resources/static/" + userCertificateDTO.get("subject").getEmail().split("@")[0]);
+                storeManager.getKeyStoreWriter().loadKeyStore(keystoreFileName, password.toCharArray());
+                storeManager.getKeyStoreWriter().write("cert1", keyPair.getPrivate(), password.toCharArray(), certConverter.getCertificate(certHolder));
+                storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/keystore.jks", password.toCharArray());
+            }
+            else{
+                String keystoreFileName = "src/main/resources/static/" + userCertificateDTO.get("issuer").getEmail().split("@")[0] + ".jks";
+                String password = this.readPasswordFromFile("src/main/resources/static/" + userCertificateDTO.get("issuer").getEmail().split("@")[0]);
+                storeManager.getKeyStoreWriter().loadKeyStore(keystoreFileName, password.toCharArray());
+                storeManager.getKeyStoreWriter().write("cert1", keyPair.getPrivate(), password.toCharArray(), certConverter.getCertificate(certHolder));
+                storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/keystore.jks", password.toCharArray());
+            }
             return certConverter.getCertificate(certHolder);
 
         } catch (OperatorCreationException | CertificateException e) {
@@ -125,6 +142,35 @@ public class PKIService implements IPKIService {
         }
     }
 
+    private void createKeyStore(UserCertificateDTO userCertificateDTO){
+        String keystoreFileName = "src/main/resources/static/" + userCertificateDTO.getEmail().split("@")[0] + ".jks";
+        String keystorePassword = this.generateRandomPassword();
+        this.writePasswordToFile("src/main/resources/static/" + userCertificateDTO.getEmail().split("@")[0], keystorePassword);
+        try {
+        KeyStore keyStore = KeyStore.getInstance("JKS");
+        keyStore.load(null, keystorePassword.toCharArray());
+        try (OutputStream keystoreOutputStream = new FileOutputStream(keystoreFileName)) {
+                keyStore.store(keystoreOutputStream, keystorePassword.toCharArray());
+        }
+        } catch (NoSuchAlgorithmException | CertificateException | IOException | KeyStoreException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private void writePasswordToFile(String filename, String password) {
+        try {
+            File file = new File(filename);
+            file.delete();
+            file.createNewFile();
+
+            FileWriter writer = new FileWriter(file);
+            writer.write(password);
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
     private void setExtensions(X509v3CertificateBuilder certBuilder, List<String> extensions, X500Name subjectName, X500Name issuerName) {
         for (String extension : extensions) {
             try {
@@ -165,6 +211,21 @@ public class PKIService implements IPKIService {
             X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicKeyBytes);
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
             return keyFactory.generatePublic(keySpec);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid Base64 encoded string", e);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Algorithm not supported", e);
+        } catch (InvalidKeySpecException e) {
+            throw new IllegalArgumentException("Invalid key specification", e);
+        }
+    }
+
+    public static PrivateKey getPrivateKeyFromBase64(String privateKeyBase64) {
+        try {
+            byte[] privateKeyBytes = Base64.getDecoder().decode(privateKeyBase64);
+            PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            return keyFactory.generatePrivate(keySpec);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid Base64 encoded string", e);
         } catch (NoSuchAlgorithmException e) {
@@ -288,6 +349,27 @@ public class PKIService implements IPKIService {
             e.printStackTrace();
         }
         return null;
+    }
+
+    private String readPasswordFromFile(String filename) {
+        try {
+            return Files.readString(Paths.get(filename));
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private String generateRandomPassword() {
+        int length = 12;
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            int randomIndex = random.nextInt(chars.length());
+            sb.append(chars.charAt(randomIndex));
+        }
+        return sb.toString();
     }
 
 }
