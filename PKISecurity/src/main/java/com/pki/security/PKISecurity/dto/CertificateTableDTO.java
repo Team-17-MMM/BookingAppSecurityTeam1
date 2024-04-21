@@ -52,6 +52,7 @@ public class CertificateTableDTO {
         EXTENSION_NAMES.put(Extension.keyUsage.getId(), "KEY_USAGE");
         EXTENSION_NAMES.put(Extension.subjectAlternativeName.getId(), "SUBJECT_ALTERNATIVE_NAME");
         EXTENSION_NAMES.put(Extension.issuerAlternativeName.getId(), "ISSUER_ALTERNATIVE_NAME");
+        EXTENSION_NAMES.put(Extension.authorityKeyIdentifier.getId(), "AUTHORITY_KEY_IDENTIFIER");
     }
 
     private List<String> extractExtensions(X509Certificate x509Certificate) {
