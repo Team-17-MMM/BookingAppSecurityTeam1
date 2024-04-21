@@ -48,7 +48,10 @@ import java.util.*;
 
 @Service
 public class PKIService implements IPKIService {
-    private static final String KEYS_FOLDER_PATH = "C:\\Users\\Milos\\IdeaProjects\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
+    //private static final String KEYS_FOLDER_PATH = "C:\\Users\\Milos\\IdeaProjects\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
+    //private static final String KEYS_FOLDER_PATH = "C:\\Users\\Korisnik\\Desktop\\web_app\\server\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
+
+    private static final String KEYS_FOLDER_PATH = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
     private final StoreManager storeManager = new StoreManager();
     @Override
     public CertificateRequest issueCertificate(CertificateRequest certificateRequest) {
@@ -93,10 +96,10 @@ public class PKIService implements IPKIService {
             certConverter = certConverter.setProvider("BC");
             String keystoreFileName1 = this.getKeyStoreName(userCertificateDTO.getIssuer().getEmail());
             String keystoreFileName = "src/main/resources/static/" + keystoreFileName1;
-            String password = this.readPasswordFromFile("src/main/resources/passwords/" + userCertificateDTO.getIssuer().getEmail().split("@")[0]);
+            String password = this.readPasswordFromFile("src/main/resources/passwords/" + keystoreFileName1.split("\\.")[0]);
             storeManager.getKeyStoreWriter().loadKeyStore(keystoreFileName, password.toCharArray());
-            storeManager.getKeyStoreWriter().write("cert1", getPrivateKeyFromBase64(privateKey), password.toCharArray(), certConverter.getCertificate(certHolder));
-            storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/" + userCertificateDTO.getIssuer().getEmail().split("@")[0] + ".jks", password.toCharArray());
+            storeManager.getKeyStoreWriter().write(userCertificateDTO.getSubject().getEmail(), getPrivateKeyFromBase64(privateKey), password.toCharArray(), certConverter.getCertificate(certHolder));
+            storeManager.getKeyStoreWriter().saveKeyStore(keystoreFileName, password.toCharArray());
             return certConverter.getCertificate(certHolder);
 
         } catch (OperatorCreationException | CertificateException e) {
@@ -173,18 +176,15 @@ public class PKIService implements IPKIService {
         }
     }
     private void setExtensions(X509v3CertificateBuilder certBuilder, List<String> extensions, X500Name subjectName, X500Name issuerName) {
-        if(extensions.isEmpty()){
-            try{
-                certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(true));
-            }catch (Exception e) {
-                throw new RuntimeException("Error adding extension", e);
-            }
-        }
         for (String extension : extensions) {
             try {
                 switch (extension) {
                     case "BASIC_CONSTRAINTS":
-                        certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(false));
+                        if(extensions.size() == 5){
+                            certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(false));
+                        }else{
+                            certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(true));
+                        }
                         break;
                     case "KEY_USAGE":
                         certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.keyUsage, true, new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
@@ -281,7 +281,7 @@ public class PKIService implements IPKIService {
     @Override
     public List<CertificateTableDTO> getAllIntermediateCertificates() {
         List<CertificateTableDTO> certificateTableDTOs = new ArrayList<>();
-        for (Certificate certificate : storeManager.getKeyStoreReader().getAllIntermediateCertificates("src/main/resources/static/superadmin.jks", "-Cy@ichw6^16")) {
+        for (Certificate certificate : storeManager.getKeyStoreReader().getAllIntermediateCertificates("src/main/resources/static/", "src/main/resources/passwords/")) {
             certificateTableDTOs.add(new CertificateTableDTO(certificate));
         }
         return certificateTableDTOs;
@@ -367,15 +367,14 @@ public class PKIService implements IPKIService {
         JcaContentSignerBuilder builder = new JcaContentSignerBuilder("SHA256WithRSAEncryption");
         builder.setProvider("BC");
         try{
+            setExtensions(certBuilder, certificateDataDTO.getExtensions(), subjectName, issuerName);
             ContentSigner contentSigner = builder.build(getPrivateKeyFromBase64(privateKey));
             X509CertificateHolder certHolder = certBuilder.build(contentSigner);
             JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
             certConverter = certConverter.setProvider("BC");
             storeManager.getKeyStoreWriter().loadKeyStore(keystoreFileName, password.toCharArray());
 
-            certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.basicConstraints, true, new BasicConstraints(true));
-            certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.keyUsage, true, new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
-            certBuilder.addExtension(org.bouncycastle.asn1.x509.Extension.subjectKeyIdentifier, false, new SubjectKeyIdentifier(new byte[20]));
+
 
             storeManager.getKeyStoreWriter().write(certificateDataDTO.getSubject().getEmail(), getPrivateKeyFromBase64(privateKey), password.toCharArray(), certConverter.getCertificate(certHolder));
             storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/" + certificateDataDTO.getSubject().getEmail().split("@")[0] + ".jks", password.toCharArray());
@@ -384,8 +383,6 @@ public class PKIService implements IPKIService {
         }catch (OperatorCreationException e) {
             throw new RuntimeException(e);
         } catch (CertificateException e) {
-            throw new RuntimeException(e);
-        } catch (CertIOException e) {
             throw new RuntimeException(e);
         }
     }
