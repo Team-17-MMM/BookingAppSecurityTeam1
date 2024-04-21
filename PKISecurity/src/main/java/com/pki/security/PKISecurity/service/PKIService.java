@@ -89,8 +89,8 @@ public class PKIService implements IPKIService {
             X509CertificateHolder certHolder = certBuilder.build(contentSigner);
             JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
             certConverter = certConverter.setProvider("BC");
-
-            String keystoreFileName = "src/main/resources/static/" + userCertificateDTO.getIssuer().getEmail().split("@")[0] + ".jks";
+            String keystoreFileName1 = this.getKeyStoreName(userCertificateDTO.getIssuer().getEmail());
+            String keystoreFileName = "src/main/resources/static/" + keystoreFileName1;
             String password = this.readPasswordFromFile("src/main/resources/passwords/" + userCertificateDTO.getIssuer().getEmail().split("@")[0]);
             storeManager.getKeyStoreWriter().loadKeyStore(keystoreFileName, password.toCharArray());
             storeManager.getKeyStoreWriter().write("cert1", getPrivateKeyFromBase64(privateKey), password.toCharArray(), certConverter.getCertificate(certHolder));
@@ -100,6 +100,44 @@ public class PKIService implements IPKIService {
         } catch (OperatorCreationException | CertificateException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private String getKeyStoreName(String alias){
+        String directory = "src/main/resources/static";
+
+        File dir = new File(directory);
+        File[] files = dir.listFiles();
+
+        if (files != null) {
+            for (File file : files) {
+                if (file.isFile() && file.getName().endsWith(".jks")) {
+                    if(this.tryKeyStore(alias, file)){
+                        return file.getName();
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean tryKeyStore(String alias, File file){
+        try {
+        KeyStore ks = KeyStore.getInstance("JKS", "SUN");
+        BufferedInputStream in = new BufferedInputStream(new FileInputStream(file));
+        String name = file.getName();
+        String password = this.readPasswordFromFile("src/main/resources/passwords/" + name.split("\\.")[0]);
+        ks.load(in, password.toCharArray());
+        Certificate cert = ks.getCertificate(alias);
+        if (cert != null){
+            return true;
+        }
+        return false;
+        }
+        catch (KeyStoreException | NoSuchProviderException | NoSuchAlgorithmException | CertificateException |
+               IOException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
 
