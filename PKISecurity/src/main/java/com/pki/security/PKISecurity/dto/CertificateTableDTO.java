@@ -5,17 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
+import org.bouncycastle.asn1.x509.Extension;
 import java.io.ByteArrayInputStream;
 import java.math.BigInteger;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
-import java.security.cert.Extension;
+
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Getter
 @Setter
@@ -47,6 +44,16 @@ public class CertificateTableDTO {
         }
     }
 
+    private static final Map<String, String> EXTENSION_NAMES = new HashMap<>();
+    static {
+        // Add mappings for known extension OID numbers to names
+        EXTENSION_NAMES.put(Extension.basicConstraints.getId(), "BASIC_CONSTRAINTS");
+        EXTENSION_NAMES.put(Extension.subjectKeyIdentifier.getId(), "SUBJECT_KEY_IDENTIFIER");
+        EXTENSION_NAMES.put(Extension.keyUsage.getId(), "KEY_USAGE");
+        EXTENSION_NAMES.put(Extension.subjectAlternativeName.getId(), "SUBJECT_ALTERNATIVE_NAME");
+        EXTENSION_NAMES.put(Extension.issuerAlternativeName.getId(), "ISSUER_ALTERNATIVE_NAME");
+    }
+
     private List<String> extractExtensions(X509Certificate x509Certificate) {
         List<String> extractedExtensions = new ArrayList<>();
         try {
@@ -57,15 +64,18 @@ public class CertificateTableDTO {
             // Check critical extensions
             if (criticalExtensions != null) {
                 for (String oid : criticalExtensions) {
-                    extractedExtensions.add(oid);
+                    // Get the name from the map if available, otherwise use the OID number
+                    String extensionName = EXTENSION_NAMES.getOrDefault(oid, oid);
+                    extractedExtensions.add(extensionName);
                 }
             }
 
             // Check non-critical extensions
             if (nonCriticalExtensions != null) {
                 for (String oid : nonCriticalExtensions) {
-
-                    extractedExtensions.add(oid);
+                    // Get the name from the map if available, otherwise use the OID number
+                    String extensionName = EXTENSION_NAMES.getOrDefault(oid, oid);
+                    extractedExtensions.add(extensionName);
                 }
             }
         } catch (Exception e) {
@@ -83,4 +93,6 @@ public class CertificateTableDTO {
         }
         return null;
     }
+
+
 }
