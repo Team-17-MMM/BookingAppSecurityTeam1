@@ -76,6 +76,20 @@ public class PKIController {
         }
     }
 
+    @GetMapping(value = {"/getHostCertificate/{email}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<CertificateTableSignatureDTO> getHostCertificate(@PathVariable("email") String email){
+        try {
+            CertificateTableSignatureDTO certificate = pkiService.getHostCertificate(email);
+            if (certificate != null){
+                return ResponseEntity.ok(certificate);
+            }else{
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
     @GetMapping(value = {"/getCertificate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<List<CertificateTableDTO>> getAllCertificates(){
         try {
@@ -91,16 +105,6 @@ public class PKIController {
             return ResponseEntity.ok(pkiService.getAllIntermediateCertificates());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-        }
-    }
-
-    @GetMapping(value = {"/revokeCertificate/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<Boolean> revokeCertificate(@PathVariable("id") String id){
-        try {
-            Boolean certificate = pkiService.revokeCertificate(id);
-            return ResponseEntity.ok(certificate);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
         }
     }
 

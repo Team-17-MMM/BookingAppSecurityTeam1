@@ -11,10 +11,7 @@ import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Enumeration;
-import java.util.List;
+import java.util.*;
 
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 
@@ -148,6 +145,47 @@ public class KeyStoreReader {
             e.printStackTrace();
         }
         return certificates;
+    }
+
+    public static Certificate getHostCertificate(String keyStoreFolder, String passwordsFolder, String alias) {
+        File folder = new File(keyStoreFolder);
+        File[] files = folder.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isFile()) {
+                    try {
+                        // remove file extension
+                        String fileName = file.getName().substring(0, file.getName().lastIndexOf('.'));
+                        Certificate cert = getCertificateFromFileByAlias(file.getAbsolutePath(), Files.readString(Paths.get(passwordsFolder + fileName)),alias);
+                        if (cert != null){
+                            return cert;
+                        }
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Certificate getCertificateFromFileByAlias(String keyStoreFile, String keyStorePass, String alias) {
+        try {
+            KeyStore ks = KeyStore.getInstance("JKS", "SUN");
+            FileInputStream in = new FileInputStream(keyStoreFile);
+            ks.load(in, keyStorePass.toCharArray());
+            Enumeration<String> aliases = ks.aliases();
+            while (aliases.hasMoreElements()) {
+                if(Objects.equals(aliases.nextElement(), alias)){
+                    return ks.getCertificate(alias);
+                }
+
+            }
+        } catch (KeyStoreException | NoSuchProviderException | NoSuchAlgorithmException |
+                 CertificateException | IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public List<Certificate> getAllIntermediateCertificates(String keyStoreFolder, String passwordsFolder) {
