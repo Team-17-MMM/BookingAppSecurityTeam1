@@ -268,7 +268,16 @@ public class PKIService implements IPKIService {
     public List<CertificateTableDTO> getAllCertificates() {
         List<CertificateTableDTO> certificateTableDTOs = new ArrayList<>();
         for (Certificate certificate : KeyStoreReader.getAllCertificates("src/main/resources/static/", "src/main/resources/passwords/")) {
-            certificateTableDTOs.add(new CertificateTableDTO(certificate));
+            if(certificate instanceof X509Certificate) {
+                X509Certificate x509Certificate = (X509Certificate) certificate;
+                String fileName = x509Certificate.getSubjectDN().getName().split("EMAILADDRESS=")[1].split(",")[0].split("@")[0];
+                String isRevokedStr = this.readPasswordFromFile("src/main/resources/status/" + fileName);
+                if(Objects.equals(isRevokedStr, "true")) {
+                    certificateTableDTOs.add(new CertificateTableDTO(certificate,false));
+                }else{
+                    certificateTableDTOs.add(new CertificateTableDTO(certificate,true));
+                }
+            }
         }
         return certificateTableDTOs;
     }
@@ -276,6 +285,11 @@ public class PKIService implements IPKIService {
 
     @Override
     public CertificateTableSignatureDTO getHostCertificate(String email) {
+        String statusFileName = email.split("@")[0];
+        String isRevokedStr = this.readPasswordFromFile("src/main/resources/status/" + statusFileName);
+        if(Objects.equals(isRevokedStr, "false")){
+            return null;
+        }
         Certificate cert = KeyStoreReader.getHostCertificate("src/main/resources/static/", "src/main/resources/passwords/", email);
         if (cert != null) {
             try {
@@ -310,7 +324,16 @@ public class PKIService implements IPKIService {
     public List<CertificateTableDTO> getAllIntermediateCertificates() {
         List<CertificateTableDTO> certificateTableDTOs = new ArrayList<>();
         for (Certificate certificate : storeManager.getKeyStoreReader().getAllIntermediateCertificates("src/main/resources/static/", "src/main/resources/passwords/")) {
-            certificateTableDTOs.add(new CertificateTableDTO(certificate));
+            if(certificate instanceof X509Certificate) {
+                X509Certificate x509Certificate = (X509Certificate) certificate;
+                String fileName = x509Certificate.getSubjectDN().getName().split("EMAILADDRESS=")[1].split(",")[0].split("@")[0];
+                String isRevokedStr = this.readPasswordFromFile("src/main/resources/status/" + fileName);
+                if(Objects.equals(isRevokedStr, "true")) {
+                    certificateTableDTOs.add(new CertificateTableDTO(certificate,false));
+                }else{
+                    certificateTableDTOs.add(new CertificateTableDTO(certificate,true));
+                }
+            }
         }
         return certificateTableDTOs;
     }

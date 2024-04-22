@@ -25,8 +25,9 @@ public class CertificateTableDTO {
     private Date endDate;
     private List<String> extensions;
     private BigInteger serialNumber;
+    private boolean isRevoked;
 
-    public CertificateTableDTO(Certificate certificate) {
+    public CertificateTableDTO(Certificate certificate, boolean isRevoked) {
         try {
             byte[] encoded = certificate.getEncoded();
             CertificateFactory factory = CertificateFactory.getInstance("X.509");
@@ -38,6 +39,7 @@ public class CertificateTableDTO {
             this.endDate = x509Certificate.getNotAfter();
             this.extensions = extractExtensions(x509Certificate);
             this.serialNumber = x509Certificate.getSerialNumber();
+            this.isRevoked = isRevoked;
         } catch (Exception e) {
             System.out.println(e.getMessage());
             e.printStackTrace();
