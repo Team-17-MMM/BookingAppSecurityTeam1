@@ -350,6 +350,71 @@ public class PKIService implements IPKIService {
         return true;
     }
 
+    @Override
+    public Boolean revokeCertificateWithChildren(String serialNumber) {
+        String email = "";
+        List<Certificate> certificatesForDelete = getCertificatesForDeletion(email, serialNumber);
+        for (Certificate certificate : certificatesForDelete) {
+            if (certificate instanceof X509Certificate) {
+                X509Certificate x509Certificate = (X509Certificate) certificate;
+                File folder = new File("src/main/resources/static/");
+                File[] files = folder.listFiles();
+                if (files != null) {
+                    for (File file : files) {
+                        if (file.isFile()) {
+                            try {
+                                // remove file extension
+                                String fileName = file.getName().substring(0, file.getName().lastIndexOf('.'));
+                                String password = this.readPasswordFromFile("src/main/resources/passwords/" + fileName);
+                                List<String> aliases = new ArrayList<>();
+                                // if any certificate from file has the same serial number as the one to be deleted, add it to the list of aliases
+                                KeyStore ks = KeyStore.getInstance("JKS", "SUN");
+                                FileInputStream in = new FileInputStream(file);
+                                ks.load(in, password.toCharArray());
+                                Enumeration<String> aliasesEnum = ks.aliases();
+                                while (aliasesEnum.hasMoreElements()) {
+                                    String alias = aliasesEnum.nextElement();
+                                    Certificate cert = ks.getCertificate(alias);
+                                    if (cert instanceof X509Certificate) {
+                                        X509Certificate x509Cert = (X509Certificate) cert;
+                                        if (x509Cert.getSerialNumber().toString().equals(serialNumber) || x509Cert.getIssuerDN().getName().contains(x509Certificate.getSubjectDN().getName())) {
+                                            aliases.add(alias);
+                                        }
+                                    }
+                                }
+
+                                if (!aliases.isEmpty()) {
+                                    String directorymm = "src/main/resources/status";
+
+                                    File dirmm = new File(directorymm);
+                                    File[] filesmm = dirmm.listFiles();
+
+                                    if (filesmm != null) {
+                                        for (File file1 : filesmm) {
+                                            for (String alias : aliases) {
+                                                if (file1.isFile() && file1.getName().equals(alias.split("@")[0])) {
+                                                    String fileName1 = "src/main/resources/status/" + alias.split("@")[0];
+                                                    this.writePasswordToFile(fileName1, "false");
+                                                }
+                                            }
+                                        }
+                                    }
+                                    storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/" + fileName + ".jks", password.toCharArray());
+                                }
+                            } catch (IOException | CertificateException | KeyStoreException | NoSuchAlgorithmException |
+                                     NoSuchProviderException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+
     // recursively add all serial numbers of certificates that need to be deleted
     private List<Certificate> getCertificatesForDeletion(String email, String serialNumber) {
         List<Certificate> certificatesForDelete = new ArrayList<>();
