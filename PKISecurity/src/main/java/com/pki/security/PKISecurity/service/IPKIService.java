@@ -32,6 +32,7 @@ public interface IPKIService {
 
     List<CertificateTableDTO> getAllCertificates();
 
+    CertificateTableDTO getHostCertificate(String email);
     Certificate getCertificate(String id);
 
     List<CertificateTableDTO> getAllIntermediateCertificates();

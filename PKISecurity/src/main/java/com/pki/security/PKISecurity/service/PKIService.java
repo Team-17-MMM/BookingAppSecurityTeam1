@@ -274,6 +274,15 @@ public class PKIService implements IPKIService {
     }
 
     @Override
+    public CertificateTableDTO getHostCertificate(String email) {
+        Certificate cert = KeyStoreReader.getHostCertificate("src/main/resources/static/", "src/main/resources/passwords/", email);
+        if (cert != null) {
+            return new CertificateTableDTO(cert);
+        }
+        return null;
+    }
+
+    @Override
     public com.pki.security.PKISecurity.domain.Certificate getCertificate(String id) {
         return null;
     }
