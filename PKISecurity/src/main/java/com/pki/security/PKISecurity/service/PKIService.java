@@ -49,9 +49,9 @@ import java.util.*;
 @Service
 public class PKIService implements IPKIService {
     //private static final String KEYS_FOLDER_PATH = "C:\\Users\\Milos\\IdeaProjects\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
-    //private static final String KEYS_FOLDER_PATH = "C:\\Users\\Korisnik\\Desktop\\web_app\\server\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
+    private static final String KEYS_FOLDER_PATH = "C:\\Users\\Korisnik\\Desktop\\web_app\\server\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
 
-    private static final String KEYS_FOLDER_PATH = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
+    //private static final String KEYS_FOLDER_PATH = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
     private final StoreManager storeManager = new StoreManager();
     @Override
     public CertificateRequest issueCertificate(CertificateRequest certificateRequest) {
@@ -97,6 +97,7 @@ public class PKIService implements IPKIService {
             String keystoreFileName1 = this.getKeyStoreName(userCertificateDTO.getIssuer().getEmail());
             String keystoreFileName = "src/main/resources/static/" + keystoreFileName1;
             String password = this.readPasswordFromFile("src/main/resources/passwords/" + keystoreFileName1.split("\\.")[0]);
+            this.writePasswordToFile("src/main/resources/status/" + userCertificateDTO.getSubject().getEmail().split("@")[0], "true");
             storeManager.getKeyStoreWriter().loadKeyStore(keystoreFileName, password.toCharArray());
             storeManager.getKeyStoreWriter().write(userCertificateDTO.getSubject().getEmail(), getPrivateKeyFromBase64(privateKey), password.toCharArray(), certConverter.getCertificate(certHolder));
             storeManager.getKeyStoreWriter().saveKeyStore(keystoreFileName, password.toCharArray());
@@ -150,6 +151,7 @@ public class PKIService implements IPKIService {
         String keystoreFileName = "src/main/resources/static/" + userCertificateDTO.getEmail().split("@")[0] + ".jks";
         String keystorePassword = this.generateRandomPassword();
         this.writePasswordToFile("src/main/resources/passwords/" + userCertificateDTO.getEmail().split("@")[0], keystorePassword);
+        this.writePasswordToFile("src/main/resources/status/" + userCertificateDTO.getEmail().split("@")[0], "true");
         try {
         KeyStore keyStore = KeyStore.getInstance("JKS");
         keyStore.load(null, keystorePassword.toCharArray());
@@ -273,6 +275,7 @@ public class PKIService implements IPKIService {
         return certificateTableDTOs;
     }
 
+
     @Override
     public com.pki.security.PKISecurity.domain.Certificate getCertificate(String id) {
         return null;
@@ -359,7 +362,7 @@ public class PKIService implements IPKIService {
                 getPublicKeyFromBase64(certificateDataDTO.getSubject().getPublicKeyBase64())
         );
 
-        String fileName = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\" + certificateDataDTO.getIssuer().getEmail().split("@")[0];
+        String fileName = KEYS_FOLDER_PATH + certificateDataDTO.getIssuer().getEmail().split("@")[0];
         String privateKey = this.readPasswordFromFile(fileName);
         String keystoreFileName = "src/main/resources/static/" + certificateDataDTO.getIssuer().getEmail().split("@")[0] + ".jks";
         String password = this.readPasswordFromFile("src/main/resources/passwords/" + certificateDataDTO.getIssuer().getEmail().split("@")[0]);
