@@ -121,12 +121,23 @@ public class PKIController {
     @DeleteMapping(value = {"/deleteCertificate/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<Boolean> deleteCertificate(@PathVariable("id") String id){
         try {
-            Boolean certificate = pkiService.deleteCertificate(id);
+            Boolean certificate = pkiService.deleteCertificateWithChildren(id);
             return ResponseEntity.ok(certificate);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
         }
     }
+
+    @DeleteMapping(value = {"/revokeCertificate/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<Boolean> revokeCertificateAndChildren(@PathVariable("id") String id){
+        try {
+            Boolean certificate = pkiService.revokeCertificateWithChildren(id);
+            return ResponseEntity.ok(certificate);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
+        }
+    }
+
 
     @GetMapping(value = {"/isCertificateValid/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<Boolean> isCertificateValid(@PathVariable("id") String id){

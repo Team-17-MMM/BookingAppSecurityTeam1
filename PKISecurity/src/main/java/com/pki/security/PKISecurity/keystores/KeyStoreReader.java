@@ -230,8 +230,9 @@ public class KeyStoreReader {
     }
 
 
-    private boolean isIntermediateCertificate(X509Certificate cert) {
+    public boolean isIntermediateCertificate(X509Certificate cert) {
         System.out.println(cert.getBasicConstraints());
         return cert.getBasicConstraints() != -1;
     }
+
 }

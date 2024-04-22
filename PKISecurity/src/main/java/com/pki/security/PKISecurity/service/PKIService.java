@@ -49,9 +49,10 @@ import java.util.*;
 @Service
 public class PKIService implements IPKIService {
     //private static final String KEYS_FOLDER_PATH = "C:\\Users\\Milos\\IdeaProjects\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
-    //private static final String KEYS_FOLDER_PATH = "C:\\Users\\Korisnik\\Desktop\\web_app\\server\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
+    private static final String KEYS_FOLDER_PATH = "C:\\Users\\Korisnik\\Desktop\\web_app\\server\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
 
-    private static final String KEYS_FOLDER_PATH = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
+    //private static final String KEYS_FOLDER_PATH = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
+
     private final StoreManager storeManager = new StoreManager();
     @Override
     public CertificateRequest issueCertificate(CertificateRequest certificateRequest) {
@@ -60,6 +61,7 @@ public class PKIService implements IPKIService {
 
     @Override
     public X509Certificate createCertificate(CertificateDataDTO userCertificateDTO) {
+//        this.createKeyStore(userCertificateDTO.getSubject());
 
         X500Name subjectName = generateName(userCertificateDTO.getSubject());
         X500Name issuerName = generateName(userCertificateDTO.getIssuer());
@@ -97,6 +99,7 @@ public class PKIService implements IPKIService {
             String keystoreFileName1 = this.getKeyStoreName(userCertificateDTO.getIssuer().getEmail());
             String keystoreFileName = "src/main/resources/static/" + keystoreFileName1;
             String password = this.readPasswordFromFile("src/main/resources/passwords/" + keystoreFileName1.split("\\.")[0]);
+            this.writePasswordToFile("src/main/resources/status/" + userCertificateDTO.getSubject().getEmail().split("@")[0], "true");
             storeManager.getKeyStoreWriter().loadKeyStore(keystoreFileName, password.toCharArray());
             storeManager.getKeyStoreWriter().write(userCertificateDTO.getSubject().getEmail(), getPrivateKeyFromBase64(privateKey), password.toCharArray(), certConverter.getCertificate(certHolder));
             storeManager.getKeyStoreWriter().saveKeyStore(keystoreFileName, password.toCharArray());
@@ -150,6 +153,7 @@ public class PKIService implements IPKIService {
         String keystoreFileName = "src/main/resources/static/" + userCertificateDTO.getEmail().split("@")[0] + ".jks";
         String keystorePassword = this.generateRandomPassword();
         this.writePasswordToFile("src/main/resources/passwords/" + userCertificateDTO.getEmail().split("@")[0], keystorePassword);
+        this.writePasswordToFile("src/main/resources/status/" + userCertificateDTO.getEmail().split("@")[0], "true");
         try {
         KeyStore keyStore = KeyStore.getInstance("JKS");
         keyStore.load(null, keystorePassword.toCharArray());
@@ -273,6 +277,7 @@ public class PKIService implements IPKIService {
         return certificateTableDTOs;
     }
 
+
     @Override
     public CertificateTableDTO getHostCertificate(String email) {
         Certificate cert = KeyStoreReader.getHostCertificate("src/main/resources/static/", "src/main/resources/passwords/", email);
@@ -302,8 +307,147 @@ public class PKIService implements IPKIService {
     }
 
     @Override
-    public Boolean deleteCertificate(String id) {
-        return null;
+    public Boolean deleteCertificateWithChildren(String serialNumber) {
+        String email = "";
+        List<Certificate> certificatesForDelete = getCertificatesForDeletion(email, serialNumber);
+        for (Certificate certificate : certificatesForDelete) {
+            if (certificate instanceof X509Certificate) {
+                X509Certificate x509Certificate = (X509Certificate) certificate;
+                File folder = new File("src/main/resources/static/");
+                File[] files = folder.listFiles();
+                if (files != null) {
+                    for (File file : files) {
+                        if (file.isFile()) {
+                            try {
+                                // remove file extension
+                                String fileName = file.getName().substring(0, file.getName().lastIndexOf('.'));
+                                String password = this.readPasswordFromFile("src/main/resources/passwords/" + fileName);
+                                List<String> aliases = new ArrayList<>();
+                                // if any certificate from file has the same serial number as the one to be deleted, add it to the list of aliases
+                                KeyStore ks = KeyStore.getInstance("JKS", "SUN");
+                                FileInputStream in = new FileInputStream(file);
+                                ks.load(in, password.toCharArray());
+                                Enumeration<String> aliasesEnum = ks.aliases();
+                                while (aliasesEnum.hasMoreElements()) {
+                                    String alias = aliasesEnum.nextElement();
+                                    Certificate cert = ks.getCertificate(alias);
+                                    if (cert instanceof X509Certificate) {
+                                        X509Certificate x509Cert = (X509Certificate) cert;
+                                        if (x509Cert.getSerialNumber().toString().equals(serialNumber) || x509Cert.getIssuerDN().getName().contains(x509Certificate.getSubjectDN().getName())) {
+                                            aliases.add(alias);
+                                        }
+                                    }
+                                }
+
+                                if (!aliases.isEmpty()) {
+                                    storeManager.getKeyStoreWriter().loadKeyStore("src/main/resources/static/" + fileName + ".jks", password.toCharArray());
+                                    for (String alias : aliases) {
+                                        storeManager.getKeyStoreWriter().deleteEntry(alias);
+                                    }
+                                    storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/" + fileName + ".jks", password.toCharArray());
+                                }
+                            } catch (IOException | CertificateException | KeyStoreException | NoSuchAlgorithmException |
+                                     NoSuchProviderException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    public Boolean revokeCertificateWithChildren(String serialNumber) {
+        String email = "";
+        List<Certificate> certificatesForDelete = getCertificatesForDeletion(email, serialNumber);
+        for (Certificate certificate : certificatesForDelete) {
+            if (certificate instanceof X509Certificate) {
+                X509Certificate x509Certificate = (X509Certificate) certificate;
+                File folder = new File("src/main/resources/static/");
+                File[] files = folder.listFiles();
+                if (files != null) {
+                    for (File file : files) {
+                        if (file.isFile()) {
+                            try {
+                                // remove file extension
+                                String fileName = file.getName().substring(0, file.getName().lastIndexOf('.'));
+                                String password = this.readPasswordFromFile("src/main/resources/passwords/" + fileName);
+                                List<String> aliases = new ArrayList<>();
+                                // if any certificate from file has the same serial number as the one to be deleted, add it to the list of aliases
+                                KeyStore ks = KeyStore.getInstance("JKS", "SUN");
+                                FileInputStream in = new FileInputStream(file);
+                                ks.load(in, password.toCharArray());
+                                Enumeration<String> aliasesEnum = ks.aliases();
+                                while (aliasesEnum.hasMoreElements()) {
+                                    String alias = aliasesEnum.nextElement();
+                                    Certificate cert = ks.getCertificate(alias);
+                                    if (cert instanceof X509Certificate) {
+                                        X509Certificate x509Cert = (X509Certificate) cert;
+                                        if (x509Cert.getSerialNumber().toString().equals(serialNumber) || x509Cert.getIssuerDN().getName().contains(x509Certificate.getSubjectDN().getName())) {
+                                            aliases.add(alias);
+                                        }
+                                    }
+                                }
+
+                                if (!aliases.isEmpty()) {
+                                    String directorymm = "src/main/resources/status";
+
+                                    File dirmm = new File(directorymm);
+                                    File[] filesmm = dirmm.listFiles();
+
+                                    if (filesmm != null) {
+                                        for (File file1 : filesmm) {
+                                            for (String alias : aliases) {
+                                                if (file1.isFile() && file1.getName().equals(alias.split("@")[0])) {
+                                                    String fileName1 = "src/main/resources/status/" + alias.split("@")[0];
+                                                    this.writePasswordToFile(fileName1, "false");
+                                                }
+                                            }
+                                        }
+                                    }
+                                    storeManager.getKeyStoreWriter().saveKeyStore("src/main/resources/static/" + fileName + ".jks", password.toCharArray());
+                                }
+                            } catch (IOException | CertificateException | KeyStoreException | NoSuchAlgorithmException |
+                                     NoSuchProviderException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+
+    // recursively add all serial numbers of certificates that need to be deleted
+    private List<Certificate> getCertificatesForDeletion(String email, String serialNumber) {
+        List<Certificate> certificatesForDelete = new ArrayList<>();
+        List<Certificate> certificates = KeyStoreReader.getAllCertificates("src/main/resources/static/", "src/main/resources/passwords/");
+        for (Certificate certificate : certificates) {
+            if (certificate instanceof X509Certificate) {
+                X509Certificate x509Certificate = (X509Certificate) certificate;
+                if (email.equals("")){
+                    if (x509Certificate.getSerialNumber().toString().equals(serialNumber)){
+                        certificatesForDelete.add(x509Certificate);
+                        if (!x509Certificate.getSubjectDN().getName().equals(x509Certificate.getIssuerDN().getName())) {
+                            certificatesForDelete.addAll(getCertificatesForDeletion(x509Certificate.getSubjectDN().getName().split("EMAILADDRESS=")[1].split(",")[0], ""));
+                        }
+                    }
+                }
+                else if (x509Certificate.getIssuerDN().getName().contains(email)) {
+                    certificatesForDelete.add(x509Certificate);
+                    if (!x509Certificate.getSubjectDN().getName().equals(x509Certificate.getIssuerDN().getName())) {
+                        certificatesForDelete.addAll(getCertificatesForDeletion(x509Certificate.getSubjectDN().getName().split("EMAILADDRESS=")[1].split(",")[0], ""));
+                    }
+                }
+            }
+        }
+        return certificatesForDelete;
     }
 
     @Override
@@ -368,7 +512,7 @@ public class PKIService implements IPKIService {
                 getPublicKeyFromBase64(certificateDataDTO.getSubject().getPublicKeyBase64())
         );
 
-        String fileName = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\" + certificateDataDTO.getIssuer().getEmail().split("@")[0];
+        String fileName = KEYS_FOLDER_PATH + certificateDataDTO.getIssuer().getEmail().split("@")[0];
         String privateKey = this.readPasswordFromFile(fileName);
         String keystoreFileName = "src/main/resources/static/" + certificateDataDTO.getIssuer().getEmail().split("@")[0] + ".jks";
         String password = this.readPasswordFromFile("src/main/resources/passwords/" + certificateDataDTO.getIssuer().getEmail().split("@")[0]);
