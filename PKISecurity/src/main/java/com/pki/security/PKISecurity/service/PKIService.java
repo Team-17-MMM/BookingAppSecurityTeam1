@@ -1,4 +1,5 @@
 package com.pki.security.PKISecurity.service;
+import com.pki.security.PKISecurity.dto.CertificateTableSignatureDTO;
 import org.bouncycastle.asn1.x509.AuthorityKeyIdentifier;
 
 import com.pki.security.PKISecurity.domain.*;
@@ -7,7 +8,6 @@ import com.pki.security.PKISecurity.dto.CertificateTableDTO;
 import com.pki.security.PKISecurity.dto.UserCertificateDTO;
 import com.pki.security.PKISecurity.keystores.KeyStoreReader;
 import com.pki.security.PKISecurity.manager.StoreManager;
-import org.bouncycastle.asn1.x500.X500NameBuilder;
 import org.bouncycastle.asn1.x500.style.BCStyle;
 import org.bouncycastle.asn1.x509.*;
 import org.bouncycastle.asn1.x509.BasicConstraints;
@@ -15,7 +15,6 @@ import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.KeyUsage;
 import org.bouncycastle.asn1.x509.SubjectKeyIdentifier;
-import org.bouncycastle.cert.CertIOException;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -40,8 +39,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -49,9 +46,8 @@ import java.util.*;
 @Service
 public class PKIService implements IPKIService {
     //private static final String KEYS_FOLDER_PATH = "C:\\Users\\Milos\\IdeaProjects\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
-    private static final String KEYS_FOLDER_PATH = "C:\\Users\\Korisnik\\Desktop\\web_app\\server\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
-
-    //private static final String KEYS_FOLDER_PATH = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
+    //private static final String KEYS_FOLDER_PATH = "C:\\Users\\Korisnik\\Desktop\\web_app\\server\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
+    private static final String KEYS_FOLDER_PATH = "D:\\Faks\\V Semestar\\Serverske\\BookingAppServerTeam17\\BookingApp\\src\\main\\resources\\keys\\";
 
     private final StoreManager storeManager = new StoreManager();
     @Override
@@ -279,10 +275,28 @@ public class PKIService implements IPKIService {
 
 
     @Override
-    public CertificateTableDTO getHostCertificate(String email) {
+    public CertificateTableSignatureDTO getHostCertificate(String email) {
         Certificate cert = KeyStoreReader.getHostCertificate("src/main/resources/static/", "src/main/resources/passwords/", email);
         if (cert != null) {
-            return new CertificateTableDTO(cert);
+            try {
+                CertificateTableSignatureDTO certificateTableSignatureDTO = new CertificateTableSignatureDTO(cert);
+                certificateTableSignatureDTO.setCertificateData(certificateTableSignatureDTO.toString());
+                Signature signature = Signature.getInstance("SHA256withRSA");
+                String fileName = KEYS_FOLDER_PATH + email.split("@")[0];
+                String privateKey = this.readPasswordFromFile(fileName);
+                signature.initSign(getPrivateKeyFromBase64(privateKey));
+                signature.update(certificateTableSignatureDTO.getCertificateData().getBytes());
+                byte[] digitalSignature = signature.sign();
+                String encodedSignature = Base64.getEncoder().encodeToString(digitalSignature);
+                certificateTableSignatureDTO.setSignature(encodedSignature);
+                return certificateTableSignatureDTO;
+            } catch (NoSuchAlgorithmException e) {
+                throw new RuntimeException(e);
+            } catch (SignatureException e) {
+                throw new RuntimeException(e);
+            } catch (InvalidKeyException e) {
+                throw new RuntimeException(e);
+            }
         }
         return null;
     }
@@ -299,11 +313,6 @@ public class PKIService implements IPKIService {
             certificateTableDTOs.add(new CertificateTableDTO(certificate));
         }
         return certificateTableDTOs;
-    }
-
-    @Override
-    public Boolean revokeCertificate(String id) {
-        return null;
     }
 
     @Override
