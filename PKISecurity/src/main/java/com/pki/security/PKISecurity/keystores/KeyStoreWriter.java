@@ -6,9 +6,13 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.Enumeration;
 
 
 @Component
@@ -48,6 +52,26 @@ public class KeyStoreWriter {
     public void write(String alias, PrivateKey privateKey, char[] password, Certificate certificate) {
         try {
             keyStore.setKeyEntry(alias, privateKey, password, new Certificate[] {certificate});
+        } catch (KeyStoreException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void deleteCertificate(String alias, String file, String password) {
+        try {
+            keyStore.load(new FileInputStream(file), password.toCharArray());
+            keyStore.deleteEntry(alias);
+            keyStore.store(new FileOutputStream(file), password.toCharArray());
+        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException e) {
+            System.out.println("Error while deleting entry from keystore");
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public void deleteEntry(String name) {
+        try {
+            System.out.println("Deleting entry: " + name);
+            keyStore.deleteEntry(name);
         } catch (KeyStoreException e) {
             e.printStackTrace();
         }
