@@ -22,7 +22,7 @@ public interface IPKIService {
 
     Boolean revokeCertificate(String id);
 
-    Boolean deleteCertificate(String id);
+    Boolean deleteCertificateWithChildren(String id);
 
     Boolean isCertificateValid(String id);
 
